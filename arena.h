@@ -72,7 +72,6 @@ Arena *A_create(const size_t sz)
         a->sz = sz;
         a->free = (struct chunk *)(a + 1);
         a->used = NULL;
-
         a->free->sz = sz - sizeof(*a) - sizeof(*a->free);
         a->free->next = NULL;
 
