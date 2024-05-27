@@ -29,11 +29,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ARENA_CAPACITY 0xffff
+#define ARENA_CAPACITY 0x100
 #define ARENA_ALIGNMENT 8
 
 typedef struct arena Arena;
+typedef struct a_string AString;
 
+// Arena stuff
 Arena *A_create(const size_t sz);
 void A_destroy(Arena *a);
 void *A_alloc(Arena *a, const size_t sz);
@@ -42,7 +44,19 @@ void *A_realloc(Arena *a, void *ptr, const size_t sz);
 void A_free(Arena *a, const void *ptr);
 void A_debug_draw_graph(const Arena *a);
 
-#endif // ARENA_H_
+// String stuff
+AString *AS_create_from_char_array(Arena *a, const char *carr, const size_t sz);
+AString *AS_create_from_cstr(Arena *a, const char *str);
+void AS_free(Arena *a, AString *astr);
+AString *AS_append_char_array(Arena *a, AString *astr, const char *carr,
+                              const size_t sz);
+AString *AS_append_cstr(Arena *a, AString *astr, const char *str);
+char *AS_data(AString *astr);
+size_t AS_sz(AString *astr);
+
+// String printf macros
+#define AS_format(astr) "%.*s"
+#define AS_arg(astr) (int)AS_sz(astr), AS_data(astr)
 
 #ifdef ARENA_IMPLEMENTATION
 
@@ -251,4 +265,58 @@ void A_debug_draw_graph(const Arena *a)
         printf("\n------------------\n\n");
 }
 
+struct a_string {
+        size_t sz;
+        char data[];
+};
+
+AString *AS_create_from_char_array(Arena *a, const char *carr, const size_t sz)
+{
+        AString *astr = A_alloc(a, sizeof(AString) + sz);
+        if (!astr) {
+                return NULL;
+        }
+
+        astr->sz = sz;
+        memcpy(astr->data, carr, astr->sz);
+
+        return astr;
+}
+
+AString *AS_create_from_cstr(Arena *a, const char *str)
+{
+        return AS_create_from_char_array(a, str, strlen(str));
+}
+
+void AS_free(Arena *a, AString *astr) { A_free(a, astr); }
+
+AString *AS_append_char_array(Arena *a, AString *astr, const char *carr,
+                              const size_t sz)
+{
+        AString *realloced = A_realloc(a, astr, sizeof(*astr) + astr->sz + sz);
+        if (!realloced) {
+                return NULL;
+        }
+
+        // Since realloc already copied the original string to the new
+        // allocation, only the string to be appended has to be copied
+        memcpy(&realloced->data[realloced->sz], carr, sz);
+
+        // Update size of astr
+        size_t newsz = realloced->sz + sz;
+        realloced->sz = newsz;
+
+        return realloced;
+}
+
+AString *AS_append_cstr(Arena *a, AString *astr, const char *str)
+{
+        return AS_append_char_array(a, astr, str, strlen(str));
+}
+
+char *AS_data(AString *astr) { return astr->data; }
+
+size_t AS_sz(AString *astr) { return astr->sz; }
+
 #endif // ARENA_IMPLEMENTATION
+#endif // ARENA_H_
