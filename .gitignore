@@ -2,6 +2,9 @@
 .vscode
 bin
 obj
+debug
 *.bak
 *.dot
 *.pdf
+*.test
+*.o
